@@ -9,8 +9,9 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
+    const { username, password, email } = req.body;
+    const imagePath = req.file ? req.file.path : null;
+    if (!username || !password || !email) {
       next({
         status: 400,
         message: "missing creds",
@@ -19,15 +20,22 @@ export const register = async (
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const newUser = await User.create({ username, passwaord: hashedPassword });
+    const newUser = await User.create({
+      ...req.body,
+      image: imagePath,
+      username,
+      email,
+      passwaord: hashedPassword,
+    });
 
-    const payload = { userId: newUser._id, username: username };
+    const payload = { userId: newUser._id, username: username, email: email };
     const secret = env.JWT_SECRET;
     const options = { expiresIn: env.JWT_EXP } as jwt.SignOptions;
     const token = jwt.sign(payload, secret as string, options);
 
     res.status(201).json({
       username: username,
+      email: email,
       password: hashedPassword,
       token: token,
     });
@@ -42,8 +50,8 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
+    const { username, password, email } = req.body;
+    if (!username || !password || !email) {
       next({
         status: 400,
         message: "missing creds",
@@ -67,7 +75,7 @@ export const login = async (
       });
     }
 
-    const payload = { userId: user._id, username: username };
+    const payload = { userId: user._id, username: username, email: email };
     const secret = env.JWT_SECRET;
     const options = { expiresIn: env.JWT_EXP } as jwt.SignOptions;
     const token = jwt.sign(payload, secret as string, options);
