@@ -3,6 +3,7 @@ import User from "../../models/User";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+
 export const register = async (
   req: Request,
   res: Response,
@@ -16,6 +17,18 @@ export const register = async (
         status: 400,
         message: "missing creds",
       });
+    }
+
+    const usernameExists = await User.findOne({ username });
+    if (usernameExists) {
+      return next({
+        status: 400,
+        message: "username already exists",
+      });
+    }
+    const emaiExists = await User.findOne({ email });
+    if (emaiExists) {
+      return next({ status: 400, message: "email already exists" });
     }
 
     const saltRounds = 10;
@@ -82,6 +95,19 @@ export const login = async (
     res.status(200).json({
       token: token,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAllUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const users = await User.find();
+    return res.json({ users });
   } catch (err) {
     next(err);
   }
