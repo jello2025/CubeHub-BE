@@ -63,8 +63,8 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password, email } = req.body;
-    if (!username || !password || !email) {
+    const { username, password } = req.body;
+    if (!username || !password) {
       next({
         status: 400,
         message: "missing creds",
@@ -88,7 +88,7 @@ export const login = async (
       });
     }
 
-    const payload = { userId: user._id, username: username, email: email };
+    const payload = { userId: user._id, username: username };
     const secret = env.JWT_SECRET;
     const options = { expiresIn: env.JWT_EXP } as jwt.SignOptions;
     const token = jwt.sign(payload, secret as string, options);
