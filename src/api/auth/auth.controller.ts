@@ -41,7 +41,11 @@ export const register = async (
       passwaord: hashedPassword,
     });
 
-    const payload = { userId: newUser._id, username: username, email: email };
+    const payload = {
+      userId: newUser._id,
+      username: username,
+      email: email,
+    };
     const secret = env.JWT_SECRET;
     const options = { expiresIn: env.JWT_EXP } as jwt.SignOptions;
     const token = jwt.sign(payload, secret as string, options);
@@ -51,6 +55,7 @@ export const register = async (
       email: email,
       password: hashedPassword,
       token: token,
+      image: imagePath,
     });
   } catch (err) {
     next(err);
@@ -111,4 +116,17 @@ export const getAllUsers = async (
   } catch (err) {
     next(err);
   }
+};
+
+export const getUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  return res.status(200).json({
+    username: user?.username,
+    image: user?.image,
+  });
 };
