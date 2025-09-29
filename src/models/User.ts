@@ -5,6 +5,9 @@ const UserSchema = new Schema({
   email: { type: String, required: true },
   passwaord: { type: String, required: true, min: 8 },
   image: { type: String },
+  ao5: { type: Number },
+  ao12: { type: Number },
+  single: { type: Number },
 });
 
 export type UserAttrs = InferSchemaType<typeof UserSchema>;

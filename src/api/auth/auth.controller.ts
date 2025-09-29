@@ -10,7 +10,7 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password, email } = req.body;
+    const { username, password, email, ao5, ao12, single } = req.body;
     const imagePath = req.file ? req.file.path : null;
     if (!username || !password || !email) {
       next({
@@ -39,6 +39,9 @@ export const register = async (
       username,
       email,
       passwaord: hashedPassword,
+      ao12: ao12,
+      ao5: ao5,
+      single: single,
     });
 
     const payload = {
@@ -56,7 +59,29 @@ export const register = async (
       password: hashedPassword,
       token: token,
       image: imagePath,
+      ao12: ao12,
+      ao5: ao5,
+      single: single,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateUserById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    if (foundUser) {
+      await foundUser.updateOne(req.user);
+      res.status(204).end();
+    } else {
+      res.status(404).json({ message: "user not found" });
+    }
   } catch (err) {
     next(err);
   }
@@ -128,5 +153,8 @@ export const getUser = async (
   return res.status(200).json({
     username: user?.username,
     image: user?.image,
+    ao5: user?.ao5,
+    ao12: user?.ao12,
+    single: user?.single,
   });
 };
