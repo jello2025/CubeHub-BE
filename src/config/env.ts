@@ -10,4 +10,5 @@ export const env = {
   DB_URL: process.env.DB_URL,
   JWT_EXP: process.env.JWT_EXP,
   JWT_SECRET: process.env.JWT_SECRET,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 };

@@ -10,7 +10,7 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password, email, ao5, ao12, single } = req.body;
+    const { username, password, image, email, ao5, ao12, single } = req.body;
     const imagePath = req.file ? req.file.path : null;
     if (!username || !password || !email) {
       next({
@@ -137,7 +137,7 @@ export const getAllUsers = async (
 ) => {
   try {
     const users = await User.find();
-    return res.json({ users });
+    return res.json(users);
   } catch (err) {
     next(err);
   }
@@ -157,4 +157,43 @@ export const getUser = async (
     ao12: user?.ao12,
     single: user?.single,
   });
+};
+
+export const deleteById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    if (foundUser) {
+      await foundUser.deleteOne();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ message: "user not found" });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteManyUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userIds } = req.body;
+  try {
+    const result = await User.deleteMany({ _id: { $in: userIds } });
+    if (result.deletedCount > 0) {
+      res
+        .status(200)
+        .json({ message: `${result.deletedCount} users deleted.` });
+    } else {
+      res.status(404).json({ message: "No users found to delete." });
+    }
+  } catch (err) {
+    next(err);
+  }
 };

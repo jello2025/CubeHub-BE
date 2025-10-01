@@ -7,6 +7,7 @@ import { env } from "./config/env";
 import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { authRouter } from "./api/auth/auth.routes";
+import scrambleRouter from "./api/ai/scramble.routes";
 import path from "path";
 const app = express();
 dotenv.config();
@@ -17,6 +18,7 @@ app.use(morgan("dev"));
 connectDB();
 
 app.use("/api/auth", authRouter);
+app.use("/api/ai", scrambleRouter);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 const PORT = env.PORT || "5000";
