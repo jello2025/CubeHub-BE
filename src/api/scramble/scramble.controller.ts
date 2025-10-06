@@ -1,5 +1,7 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import Scramble from "../../models/Scramble";
+import User from "../../models/User";
+import Attempt from "../../models/Attempt";
 
 const faces = ["U", "D", "L", "R", "F", "B"];
 const modifiers = ["'", "2"];
@@ -30,20 +32,17 @@ function generateScramble() {
   return scramble.join(" ");
 }
 
-// Controller
+// Controller: Get today's scramble
 export const getDailyScramble = async (req: Request, res: Response) => {
   try {
-    // Get today's date in UTC at 00:00:00
     const today = new Date();
     const utcToday = new Date(
       Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
     );
 
-    // Check if a scramble for today exists
     let scrambleDoc = await Scramble.findOne({ date: utcToday });
 
     if (!scrambleDoc) {
-      // If not, generate a new scramble and save it
       const newScramble = generateScramble();
       scrambleDoc = await Scramble.create({
         scramble: newScramble,
@@ -51,10 +50,109 @@ export const getDailyScramble = async (req: Request, res: Response) => {
       });
     }
 
-    // Return the scramble
     res.json(scrambleDoc.scramble);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error generating scramble" });
+  }
+};
+
+// Controller: Submit a user's solve
+export const submitSolve = async (req: Request, res: Response) => {
+  try {
+    const { userId, scrambleId, time } = req.body;
+
+    if (!userId || !scrambleId || time === undefined) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const user = await User.findById(userId);
+    const scramble = await Scramble.findById(scrambleId);
+
+    if (!user || !scramble) {
+      return res.status(404).json({ message: "User or scramble not found" });
+    }
+
+    // Check if user already solved this scramble today
+    const alreadySolved = user.scrambles.some(
+      (s) => s.toString() === scramble._id.toString()
+    );
+
+    if (alreadySolved) {
+      return res
+        .status(400)
+        .json({ message: "You already have a record for today's scramble" });
+    }
+
+    // Save the scramble to the user
+    user.scrambles.push(scramble._id);
+    await user.save();
+
+    // Optionally, you can create a field to store the time for ranking
+    // e.g., in the future you might extend Scramble schema to include solves per user
+
+    res.status(200).json({ message: "Solve submitted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error submitting solve" });
+  }
+};
+
+export const getAllAttempts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const attempts = await Attempt.find();
+    return res.json(attempts);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createAttempt = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // find daily scamble
+
+    const today = new Date();
+    const utcToday = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    );
+
+    //we have to check wether the user submitted or not:
+    // attempt mpodel
+
+    const attempt = await Attempt.findOne({
+      createdAt: utcToday,
+      user: req.user,
+    });
+
+    if (attempt) {
+      return res.status(400).json({
+        message: "u already attempted a solve today",
+      });
+    }
+
+    let scrambleDoc = await Scramble.findOne({ date: utcToday });
+
+    if (!scrambleDoc) {
+      return res.status(400).json({
+        message: "scramble doesnt exist",
+      });
+    }
+
+    // update req body to have req.body.user assigned with req.user
+    req.body.user = req.user;
+    // add req.body.scramble with todays scramble
+    req.body.scamble = scrambleDoc;
+    const newAttempt = await Attempt.create(req.body);
+    return res.status(204).json(newAttempt);
+  } catch (err) {
+    next(err);
   }
 };

@@ -9,6 +9,7 @@ const UserSchema = new Schema({
   ao12: { type: Number },
   single: { type: Number },
   scrambles: [{ type: Schema.ObjectId, ref: "Scramble" }],
+  attempts: [{ type: Schema.ObjectId, ref: "Attempt" }],
 });
 
 export type UserAttrs = InferSchemaType<typeof UserSchema>;

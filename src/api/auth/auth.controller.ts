@@ -157,6 +157,7 @@ export const getUser = async (
     ao12: user?.ao12,
     single: user?.single,
     scrambles: user?.scrambles,
+    attempts: user?.attempts,
   });
 };
 
