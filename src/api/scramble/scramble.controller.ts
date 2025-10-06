@@ -230,3 +230,59 @@ export const getLeaderboard = async (req: Request, res: Response) => {
       .json({ message: "Server error fetching leaderboard" });
   }
 };
+
+export const getUserScrambleHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId; // from :userId in route
+
+    // Get all scrambles
+    const scrambles = await Scramble.find().sort({ date: -1 }); // latest first
+    const history = [];
+
+    for (const scramble of scrambles) {
+      // get all attempts for this scramble sorted by duration
+      const attempts = await Attempt.find({ scramble: scramble._id }).sort({
+        duration: 1,
+      });
+
+      // find user's attempt
+      const userAttempt = attempts.find((a) => a.user?.toString() === userId);
+      if (!userAttempt) continue; // skip if user didn't attempt this scramble
+
+      // calculate ranking
+      const rank = attempts.findIndex((a) => a.user?.toString() === userId) + 1;
+
+      history.push({
+        scrambleId: scramble._id,
+        date: scramble.date,
+        time: userAttempt.duration,
+        rank,
+      });
+    }
+
+    return res.json({ history });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Server error fetching scramble history" });
+  }
+};
+
+export const deleteAttempt = async (req: Request, res: Response) => {
+  try {
+    const attemptId = req.params.attemptId;
+
+    const attempt = await Attempt.findById(attemptId);
+    if (!attempt) {
+      return res.status(404).json({ message: "Attempt not found" });
+    }
+
+    await Attempt.findByIdAndDelete(attemptId);
+
+    return res.json({ message: "Attempt deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error deleting attempt" });
+  }
+};
