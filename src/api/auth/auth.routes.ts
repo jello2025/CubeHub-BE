@@ -8,6 +8,7 @@ import {
   updateUserById,
   deleteById,
   deleteManyUsers,
+  getUserById,
 } from "./auth.controller";
 import upload from "../../middlewares/multer";
 export const authRouter = Router();
@@ -19,3 +20,4 @@ authRouter.get("/myProfile", authenticate, getUser);
 authRouter.put("/:userId", updateUserById);
 authRouter.delete("/:userId", deleteById);
 authRouter.delete("/deleteMany", deleteManyUsers);
+authRouter.get("/:userId", getUserById);

@@ -50,7 +50,26 @@ export const getDailyScramble = async (req: Request, res: Response) => {
       });
     }
 
-    res.json(scrambleDoc.scramble);
+    // check if user already submitted
+    let alreadySubmitted = false;
+    let userAttempt: any = null;
+    if (req.user) {
+      const attempt = await Attempt.findOne({
+        user: req.user,
+        scramble: scrambleDoc._id,
+      });
+      if (attempt) {
+        alreadySubmitted = true;
+        userAttempt = attempt;
+      }
+    }
+
+    res.json({
+      _id: scrambleDoc._id,
+      scramble: scrambleDoc.scramble,
+      alreadySubmitted,
+      userAttempt,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error generating scramble" });
@@ -60,44 +79,52 @@ export const getDailyScramble = async (req: Request, res: Response) => {
 // Controller: Submit a user's solve
 export const submitSolve = async (req: Request, res: Response) => {
   try {
-    const { userId, scrambleId, time } = req.body;
+    const { scrambleId, duration } = req.body;
 
-    if (!userId || !scrambleId || time === undefined) {
+    if (!req.user || !scrambleId || duration === undefined) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(req.user);
     const scramble = await Scramble.findById(scrambleId);
 
     if (!user || !scramble) {
       return res.status(404).json({ message: "User or scramble not found" });
     }
 
-    // Check if user already solved this scramble today
-    const alreadySolved = user.scrambles.some(
-      (s) => s.toString() === scramble._id.toString()
-    );
+    const alreadySubmitted = await Attempt.findOne({
+      user: req.user,
+      scramble: scramble._id,
+    });
 
-    if (alreadySolved) {
+    if (alreadySubmitted) {
       return res
         .status(400)
-        .json({ message: "You already have a record for today's scramble" });
+        .json({ message: "You already submitted a solve for this scramble" });
     }
 
-    // Save the scramble to the user
+    const newAttempt = await Attempt.create({
+      user: req.user,
+      scramble: scramble._id,
+      duration,
+    });
+
+    // Add attempt to user & scramble
+    user.attempts.push(newAttempt._id);
     user.scrambles.push(scramble._id);
     await user.save();
 
-    // Optionally, you can create a field to store the time for ranking
-    // e.g., in the future you might extend Scramble schema to include solves per user
+    scramble.attempt.push(newAttempt._id);
+    await scramble.save();
 
-    res.status(200).json({ message: "Solve submitted successfully" });
-  } catch (error) {
-    console.error(error);
+    res.status(201).json({ message: "Solve submitted", attempt: newAttempt });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error submitting solve" });
   }
 };
 
+// Get all attempts
 export const getAllAttempts = async (
   req: Request,
   res: Response,
@@ -111,48 +138,95 @@ export const getAllAttempts = async (
   }
 };
 
+// Create attempt (legacy)
 export const createAttempt = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // find daily scamble
+    if (!req.user || !req.body.duration) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
     const today = new Date();
     const utcToday = new Date(
       Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
     );
 
-    //we have to check wether the user submitted or not:
-    // attempt mpodel
-
-    const attempt = await Attempt.findOne({
-      createdAt: utcToday,
+    const existingAttempt = await Attempt.findOne({
       user: req.user,
+      createdAt: {
+        $gte: utcToday,
+        $lt: new Date(utcToday.getTime() + 24 * 60 * 60 * 1000),
+      },
     });
 
-    if (attempt) {
-      return res.status(400).json({
-        message: "u already attempted a solve today",
-      });
+    if (existingAttempt) {
+      return res
+        .status(400)
+        .json({ message: "You already submitted a solve today" });
     }
 
     let scrambleDoc = await Scramble.findOne({ date: utcToday });
-
     if (!scrambleDoc) {
-      return res.status(400).json({
-        message: "scramble doesnt exist",
+      scrambleDoc = await Scramble.create({
+        scramble: generateScramble(),
+        date: utcToday,
       });
     }
 
-    // update req body to have req.body.user assigned with req.user
-    req.body.user = req.user;
-    // add req.body.scramble with todays scramble
-    req.body.scamble = scrambleDoc;
-    const newAttempt = await Attempt.create(req.body);
-    return res.status(204).json(newAttempt);
+    const newAttempt = await Attempt.create({
+      user: req.user,
+      scramble: scrambleDoc._id,
+      duration: req.body.duration,
+    });
+
+    await User.findByIdAndUpdate(req.user, {
+      $push: { attempts: newAttempt._id, scrambles: scrambleDoc._id },
+    });
+
+    scrambleDoc.attempt.push(newAttempt._id);
+    await scrambleDoc.save();
+
+    return res
+      .status(201)
+      .json({ message: "Attempt submitted", attempt: newAttempt });
   } catch (err) {
     next(err);
+  }
+};
+
+// Leaderboard controller: only gets users who submitted today, sorted fastest → slowest
+export const getLeaderboard = async (req: Request, res: Response) => {
+  try {
+    // Today's date (UTC)
+    const today = new Date();
+    const utcToday = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    );
+
+    // Get today's scramble
+    const scramble = await Scramble.findOne({ date: utcToday });
+    if (!scramble)
+      return res.status(404).json({ message: "No scramble for today" });
+
+    // Get all attempts for today's scramble and sort by duration
+    const attempts = await Attempt.find({ scramble: scramble._id }).sort({
+      duration: 1,
+    });
+
+    // Map to leaderboard: only user ID and time
+    const leaderboard = attempts.map((attempt) => ({
+      user: attempt.user, // just the ObjectId of the user
+      time: attempt.duration,
+    }));
+
+    return res.json({ scrambleId: scramble._id, leaderboard });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Server error fetching leaderboard" });
   }
 };

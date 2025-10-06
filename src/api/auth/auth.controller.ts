@@ -199,3 +199,17 @@ export const deleteManyUsers = async (
     next(err);
   }
 };
+
+export const getUserById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    res.status(200).json(foundUser);
+  } catch (err) {
+    next(err);
+  }
+};
