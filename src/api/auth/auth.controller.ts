@@ -3,6 +3,7 @@ import User from "../../models/User";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+import { emit } from "process";
 
 export const register = async (
   req: Request,
@@ -35,7 +36,7 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const newUser = await User.create({
       ...req.body,
-      image: imagePath,
+      image: image,
       username,
       email,
       passwaord: hashedPassword,
@@ -58,7 +59,7 @@ export const register = async (
       email: email,
       password: hashedPassword,
       token: token,
-      image: imagePath,
+      image: image,
       ao12: ao12,
       ao5: ao5,
       single: single,
@@ -77,7 +78,7 @@ export const updateUserById = async (
   try {
     const foundUser = await User.findById(userId);
     if (foundUser) {
-      await foundUser.updateOne(req.user);
+      await foundUser.updateOne(req.body);
       res.status(204).end();
     } else {
       res.status(404).json({ message: "user not found" });
@@ -158,6 +159,7 @@ export const getUser = async (
     single: user?.single,
     scrambles: user?.scrambles,
     attempts: user?.attempts,
+    email: user?.email,
   });
 };
 
