@@ -1,8 +1,23 @@
 import { Router } from "express";
-import { register, login, getAllUsers } from "./auth.controller";
+import { authenticate } from "../../middlewares/authenticate";
+import {
+  register,
+  login,
+  getAllUsers,
+  getUser,
+  updateUserById,
+  deleteById,
+  deleteManyUsers,
+  getUserById,
+} from "./auth.controller";
 import upload from "../../middlewares/multer";
 export const authRouter = Router();
 
 authRouter.post("/register", upload.single("image"), register);
 authRouter.post("/login", login);
 authRouter.get("/getAll", getAllUsers);
+authRouter.get("/myProfile", authenticate, getUser);
+authRouter.put("/:userId", updateUserById);
+authRouter.delete("/:userId", deleteById);
+authRouter.delete("/deleteMany", deleteManyUsers);
+authRouter.get("/:userId", getUserById);

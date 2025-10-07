@@ -3,6 +3,7 @@ import User from "../../models/User";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+import { emit } from "process";
 
 export const register = async (
   req: Request,
@@ -10,7 +11,7 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password, email } = req.body;
+    const { username, password, image, email, ao5, ao12, single } = req.body;
     const imagePath = req.file ? req.file.path : null;
     if (!username || !password || !email) {
       next({
@@ -35,13 +36,20 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const newUser = await User.create({
       ...req.body,
-      image: imagePath,
+      image: image,
       username,
       email,
       passwaord: hashedPassword,
+      ao12: ao12,
+      ao5: ao5,
+      single: single,
     });
 
-    const payload = { userId: newUser._id, username: username, email: email };
+    const payload = {
+      userId: newUser._id,
+      username: username,
+      email: email,
+    };
     const secret = env.JWT_SECRET;
     const options = { expiresIn: env.JWT_EXP } as jwt.SignOptions;
     const token = jwt.sign(payload, secret as string, options);
@@ -51,7 +59,30 @@ export const register = async (
       email: email,
       password: hashedPassword,
       token: token,
+      image: image,
+      ao12: ao12,
+      ao5: ao5,
+      single: single,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateUserById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    if (foundUser) {
+      await foundUser.updateOne(req.body);
+      res.status(204).end();
+    } else {
+      res.status(404).json({ message: "user not found" });
+    }
   } catch (err) {
     next(err);
   }
@@ -107,7 +138,79 @@ export const getAllUsers = async (
 ) => {
   try {
     const users = await User.find();
-    return res.json({ users });
+    return res.json(users);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  return res.status(200).json({
+    username: user?.username,
+    image: user?.image,
+    ao5: user?.ao5,
+    ao12: user?.ao12,
+    single: user?.single,
+    scrambles: user?.scrambles,
+    attempts: user?.attempts,
+    email: user?.email,
+  });
+};
+
+export const deleteById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    if (foundUser) {
+      await foundUser.deleteOne();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ message: "user not found" });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteManyUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userIds } = req.body;
+  try {
+    const result = await User.deleteMany({ _id: { $in: userIds } });
+    if (result.deletedCount > 0) {
+      res
+        .status(200)
+        .json({ message: `${result.deletedCount} users deleted.` });
+    } else {
+      res.status(404).json({ message: "No users found to delete." });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getUserById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req.params;
+  try {
+    const foundUser = await User.findById(userId);
+    res.status(200).json(foundUser);
   } catch (err) {
     next(err);
   }
