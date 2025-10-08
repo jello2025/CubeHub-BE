@@ -112,12 +112,40 @@ export const submitSolve = async (req: Request, res: Response) => {
     // Add attempt to user & scramble
     user.attempts.push(newAttempt._id);
     user.scrambles.push(scramble._id);
+
+    // ✅ STREAK LOGIC
+    const today = new Date();
+    const lastDate = user.lastSubmissionDate
+      ? new Date(user.lastSubmissionDate)
+      : null;
+
+    if (lastDate) {
+      const diffTime = today.getTime() - lastDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        // consecutive day
+        user.streak = (user.streak || 0) + 1;
+      } else if (diffDays > 1) {
+        // missed a day
+        user.streak = 1;
+      } // diffDays === 0 → same day, no change
+    } else {
+      // first submission ever
+      user.streak = 1;
+    }
+
+    user.lastSubmissionDate = today;
     await user.save();
 
     scramble.attempt.push(newAttempt._id);
     await scramble.save();
 
-    res.status(201).json({ message: "Solve submitted", attempt: newAttempt });
+    res.status(201).json({
+      message: "Solve submitted",
+      attempt: newAttempt,
+      streak: user.streak, // send back updated streak
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error submitting solve" });
@@ -179,7 +207,7 @@ export const createAttempt = async (
     const newAttempt = await Attempt.create({
       user: req.user,
       scramble: scrambleDoc._id,
-      duration: req.body.duration,
+      duration: +req.body.duration,
     });
 
     await User.findByIdAndUpdate(req.user, {

@@ -2,7 +2,7 @@ import { Schema, model } from "mongoose";
 
 const AttemptSchema = new Schema(
   {
-    duration: { type: String },
+    duration: { type: Number },
     user: { type: Schema.ObjectId, ref: "User" },
     scramble: { type: Schema.ObjectId, ref: "Scramble" },
   },

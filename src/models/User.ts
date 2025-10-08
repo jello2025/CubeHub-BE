@@ -10,6 +10,8 @@ const UserSchema = new Schema({
   single: { type: Number },
   scrambles: [{ type: Schema.ObjectId, ref: "Scramble" }],
   attempts: [{ type: Schema.ObjectId, ref: "Attempt" }],
+  streak: { type: Number, default: 0 },
+  lastSubmissionDate: { type: Date, default: null },
 });
 
 export type UserAttrs = InferSchemaType<typeof UserSchema>;

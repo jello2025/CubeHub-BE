@@ -11,7 +11,8 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { username, password, image, email, ao5, ao12, single } = req.body;
+    const { username, password, image, email, ao5, ao12, single, streak } =
+      req.body;
     const imagePath = req.file ? req.file.path : null;
     if (!username || !password || !email) {
       next({
@@ -43,6 +44,7 @@ export const register = async (
       ao12: ao12,
       ao5: ao5,
       single: single,
+      streak: streak,
     });
 
     const payload = {
@@ -63,6 +65,7 @@ export const register = async (
       ao12: ao12,
       ao5: ao5,
       single: single,
+      streak: streak,
     });
   } catch (err) {
     next(err);
@@ -160,6 +163,8 @@ export const getUser = async (
     scrambles: user?.scrambles,
     attempts: user?.attempts,
     email: user?.email,
+    _id: user?._id,
+    streak: user?.streak,
   });
 };
 
