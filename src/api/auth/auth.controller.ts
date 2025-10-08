@@ -3,7 +3,6 @@ import User from "../../models/User";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
-import { emit } from "process";
 
 export const register = async (
   req: Request,
