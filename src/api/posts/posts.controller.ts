@@ -8,18 +8,21 @@ export const createPost = async (
   next: NextFunction
 ) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const { image, description, user } = req.body;
+
+    if (!image || !user) {
+      return res.status(400).json({ message: "Image and user are required" });
     }
 
+    // Create the new post
     const newPost = await Post.create({
-      ...req.body,
-      user: req.user,
+      image,
+      description,
+      user,
     });
 
-    await User.findByIdAndUpdate(req.user, {
-      $push: { posts: newPost._id },
-    });
+    // Add post ID to user's posts array
+    await User.findByIdAndUpdate(user, { $push: { posts: newPost._id } });
 
     res.status(201).json(newPost);
   } catch (err) {

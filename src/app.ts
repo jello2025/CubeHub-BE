@@ -8,6 +8,7 @@ import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { authRouter } from "./api/auth/auth.routes";
 import scrambleRouter from "./api/scramble/scramble.routes";
+import { postRouter } from "./api/posts/posts.routes";
 import path from "path";
 const app = express();
 dotenv.config();
@@ -20,6 +21,7 @@ connectDB();
 app.use("/api/auth", authRouter);
 app.use("/api/scramble", scrambleRouter);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/api/posts", postRouter);
 
 const PORT = env.PORT || "5000";
 
