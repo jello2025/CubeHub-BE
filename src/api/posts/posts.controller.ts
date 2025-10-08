@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Post from "../../models/Post";
 import User from "../../models/User";
+import Attempt from "../../models/Attempt";
 
 export const createPost = async (
   req: Request,
@@ -53,6 +54,25 @@ export const getUserPosts = async (
     const userId = req.params.userId;
     const posts = await Post.find({ user: userId }).sort({ date: -1 }); // newest first
     return res.status(200).json(posts);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteAttemptById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { attemptId } = req.params;
+  try {
+    const foundAttempt = await Attempt.findById(attemptId);
+    if (foundAttempt) {
+      await foundAttempt.deleteOne();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ message: "attempt not found" });
+    }
   } catch (err) {
     next(err);
   }
